@@ -6,12 +6,6 @@ export type RetryRequestFunction = (
     response: Response | null,
 ) => boolean;
 
-export interface RequestInitWithRetry extends RequestInit {
-    retries?: number;
-    retryDelay?: number | RequestDelayFunction;
-    retryOn?: number[] | RetryRequestFunction;
-}
-
 export interface FetchRetryParams {
     retries?: number;
     retryDelay?: number | RequestDelayFunction;
@@ -35,13 +29,14 @@ function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>
     return result;
 }
 
-export default function(
-    fetchFunc: typeof fetch,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default function<F extends (...args: any) => Promise<any> = typeof fetch>(
+    fetchFunc: F,
     params: FetchRetryParams = {},
-): (input: RequestInfo, init?: RequestInitWithRetry) => Promise<Response> {
+): (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams) => Promise<Response> {
     const defaults = sanitize(params, { retries: 3, retryDelay: 500, retryOn: [419, 503, 504] });
 
-    return function(input: RequestInfo, init?: RequestInitWithRetry): Promise<Response> {
+    return function(input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams): Promise<Response> {
         const frp = sanitize(
             {
                 retries: init?.retries,
