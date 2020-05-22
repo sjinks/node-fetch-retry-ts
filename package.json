@@ -11,7 +11,13 @@
     "type": "git",
     "url": "git+https://github.com/sjinks/node-fetch-retry-ts.git"
   },
-  "keywords": ["fetch", "retry", "http", "https", "fetch API"],
+  "keywords": [
+    "fetch",
+    "retry",
+    "http",
+    "https",
+    "fetch API"
+  ],
   "author": "Volodymyr Kolesnykov <volodymyr@wildwolf.name> (https://wildwolf.name/)",
   "license": "MIT",
   "bugs": {
@@ -27,16 +33,19 @@
   "devDependencies": {
     "@types/isomorphic-fetch": "0.0.35",
     "@types/jest": "^25.2.3",
+    "@types/node-fetch": "^2.5.7",
     "@typescript-eslint/eslint-plugin": "^3.0.0",
     "@typescript-eslint/parser": "^3.0.0",
+    "cross-fetch": "^3.0.4",
     "eslint": "^7.0.0",
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-prettier": "^3.1.3",
-    "isomorphic-fetch": "^2.2.1",
+    "isomorphic-unfetch": "^3.0.0",
     "jest": "^26.0.1",
     "merge": "^1.2.1",
     "prettier": "^2.0.5",
     "ts-jest": "^26.0.0",
-    "typescript": "^3.9.3"
+    "typescript": "^3.9.3",
+    "unfetch": "^4.1.0"
   }
 }
