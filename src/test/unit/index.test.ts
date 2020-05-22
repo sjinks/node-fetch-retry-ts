@@ -1,3 +1,4 @@
+import { Response } from 'node-fetch';
 import builder from '../../';
 
 const mockedFetch = jest.fn();
