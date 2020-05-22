@@ -1,5 +1,5 @@
 {
-  "name": "node-fetch-retry-ts",
+  "name": "fetch-retry-ts",
   "version": "1.0.0",
   "description": "Adds retry functionality to fetch()",
   "main": "dist/index.js",
@@ -18,6 +18,12 @@
     "url": "https://github.com/sjinks/node-fetch-retry-ts/issues"
   },
   "homepage": "https://github.com/sjinks/node-fetch-retry-ts#readme",
+  "files": [
+    "dist/index.d.ts",
+    "dist/index.js",
+    "dist/index.js.map"
+  ],
+  "typings": "dist/index.d.ts",
   "devDependencies": {
     "@types/isomorphic-fetch": "0.0.35",
     "@types/jest": "^25.2.3",
