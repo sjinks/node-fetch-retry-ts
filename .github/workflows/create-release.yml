@@ -1,10 +1,33 @@
-name: Node.js Package
+name: Create Release
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - '*'
 
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - run: |
+          echo ::set-env name=title::$(git for-each-ref "${{ github.ref }}" --format="%(subject)")
+      - run: |
+          echo ::set-env name=description::$(git for-each-ref "${{ github.ref }}" --format="%(body)" | sed '/^-----BEGIN PGP SIGNATURE-----$/,$ d')
+      - run: echo -e "$title\n\n$description"
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ title }}
+          body: ${{ description }}
+          draft: false
+          prerelease: false
+
   build:
     runs-on: ubuntu-latest
     steps:
