@@ -30,13 +30,13 @@ function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function<F extends (...args: any) => Promise<any> = typeof fetch>(
+export default function <F extends (...args: any) => Promise<any> = typeof fetch>(
     fetchFunc: F,
     params: FetchRetryParams = {},
 ): (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams) => ReturnType<F> {
     const defaults = sanitize(params, { retries: 3, retryDelay: 500, retryOn: [419, 503, 504] });
 
-    return function(input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams): Promise<Response> {
+    return function (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams): ReturnType<F> {
         const frp = sanitize(
             {
                 retries: init?.retries,
@@ -56,10 +56,10 @@ export default function<F extends (...args: any) => Promise<any> = typeof fetch>
                       (!!error || !response || (frp.retryOn as number[]).indexOf(response.status) !== -1) &&
                       attempt < retries;
 
-        return new Promise<Response>(function(resolve, reject): void {
-            const extendedFetch = function(attempt: number): void {
+        return new Promise(function (resolve, reject): void {
+            const extendedFetch = function (attempt: number): void {
                 fetchFunc(input, init)
-                    .then(function(response: Response): void {
+                    .then(function (response: Response): void {
                         if (retryOnFn(attempt, frp.retries, null, response)) {
                             // eslint-disable-next-line @typescript-eslint/no-use-before-define
                             retry(attempt, null, response);
@@ -67,7 +67,7 @@ export default function<F extends (...args: any) => Promise<any> = typeof fetch>
                             resolve(response);
                         }
                     })
-                    .catch(function(error: Error): void {
+                    .catch(function (error: Error): void {
                         if (retryOnFn(attempt, frp.retries, error, null)) {
                             // eslint-disable-next-line @typescript-eslint/no-use-before-define
                             retry(attempt, error, null);
@@ -78,12 +78,12 @@ export default function<F extends (...args: any) => Promise<any> = typeof fetch>
             };
 
             function retry(attempt: number, error: Error | null, response: Response | null): void {
-                setTimeout(function(): void {
+                setTimeout(function (): void {
                     extendedFetch(++attempt);
                 }, retryDelayFn(attempt, error, response));
             }
 
             extendedFetch(0);
-        });
+        }) as ReturnType<F>;
     };
 }
