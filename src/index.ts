@@ -33,7 +33,7 @@ function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>
 export default function<F extends (...args: any) => Promise<any> = typeof fetch>(
     fetchFunc: F,
     params: FetchRetryParams = {},
-): (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams) => Promise<Response> {
+): (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams) => ReturnType<F> {
     const defaults = sanitize(params, { retries: 3, retryDelay: 500, retryOn: [419, 503, 504] });
 
     return function(input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams): Promise<Response> {
