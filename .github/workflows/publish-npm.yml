@@ -39,6 +39,8 @@ jobs:
         with:
           node-version: 12
           registry-url: https://npm.pkg.github.com/
+          scope: "@sjinks"
+      - run: echo registry=https://npm.pkg.github.com/sjinks >> .npmrc
       - run: npm ci
       - run: npm publish
         env:
