@@ -45,7 +45,7 @@
     "merge": "^1.2.1",
     "node-fetch": "^2.6.0",
     "prettier": "^2.0.5",
-    "ts-jest": "^26.1.4",
+    "ts-jest": "^26.2.0",
     "typescript": "^3.9.7",
     "unfetch": "^4.1.0"
   }
