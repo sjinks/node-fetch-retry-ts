@@ -4,7 +4,10 @@
   "description": "Adds retry functionality to fetch()",
   "main": "dist/index.js",
   "scripts": {
+    "prepare": "npm run build",
+    "lint": "eslint .",
     "build": "tsc",
+    "pretest": "npm run lint",
     "test": "jest --verbose --coverage"
   },
   "repository": {
