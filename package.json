@@ -35,10 +35,10 @@
   "typings": "dist/index.d.ts",
   "devDependencies": {
     "@types/isomorphic-fetch": "0.0.35",
-    "@types/jest": "^26.0.14",
+    "@types/jest": "^26.0.16",
     "@types/node-fetch": "^2.5.7",
-    "@typescript-eslint/eslint-plugin": "^4.8.2",
-    "@typescript-eslint/parser": "^4.8.2",
+    "@typescript-eslint/eslint-plugin": "^4.9.0",
+    "@typescript-eslint/parser": "^4.9.0",
     "cross-fetch": "^3.0.6",
     "eslint": "^7.14.0",
     "eslint-config-prettier": "^6.15.0",
