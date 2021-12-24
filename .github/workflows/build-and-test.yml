@@ -20,6 +20,10 @@ jobs:
         uses: actions/setup-node@v2.5.0
         with:
           node-version: ${{ matrix.node_version }}
+          cache: npm
+
+      - name: Update npm
+        run: npm i -g npm
 
       - name: Install dependencies and test
         run: npm cit
