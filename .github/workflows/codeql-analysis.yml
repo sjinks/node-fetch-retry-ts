@@ -21,7 +21,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
       with:
         fetch-depth: 2
 
@@ -29,9 +29,9 @@ jobs:
       if: ${{ github.event_name == 'pull_request' }}
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v1.0.31
+      uses: github/codeql-action/init@1a927e9307bc11970b2c679922ebc4d03a5bd980 # renovate: tag=v1.0.31
       with:
         languages: ${{ matrix.language }}
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v1.0.31
+      uses: github/codeql-action/analyze@1a927e9307bc11970b2c679922ebc4d03a5bd980 # renovate: tag=v1.0.31
