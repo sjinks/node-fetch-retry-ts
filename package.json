@@ -45,7 +45,7 @@
     "eslint-formatter-gha": "^1.2.0",
     "eslint-plugin-prettier": "^4.0.0",
     "isomorphic-unfetch": "^3.1.0",
-    "jest": "^27.0.1",
+    "jest": "^28.0.0",
     "merge": "^2.1.0",
     "node-fetch": "^2.6.1",
     "prettier": "^2.2.1",
