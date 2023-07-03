@@ -39,7 +39,7 @@
     "@types/node-fetch": "^2.5.8",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
-    "cross-fetch": "^3.0.6",
+    "cross-fetch": "^4.0.0",
     "eslint": "^8.1.0",
     "eslint-config-prettier": "^8.1.0",
     "eslint-formatter-gha": "^1.2.0",
