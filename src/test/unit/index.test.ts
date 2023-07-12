@@ -140,4 +140,32 @@ describe('fetch retry', (): void => {
                 expect(delayFn.mock.calls.length).toBe(2 - 1);
             });
     });
+
+    it('should timeout before the server answers when timeout value is configured', async (): Promise<void> => {
+        const retryFn = jest.fn();
+        const timeout = 2;
+        const callTimes: Date[] = [];
+
+        const f = builder(mockedFetch, { retries: 1, retryDelay: 0, retryOn: retryFn, retryTimeout: timeout * 1000 });
+
+        retryFn.mockReturnValueOnce(true);
+        retryFn.mockReturnValueOnce(false);
+
+        mockedFetch.mockImplementation(() => {
+            callTimes.push(new Date());
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve(new Response('503', { status: 503 }));
+                }, timeout * 1000 + 500);
+            });
+        });
+
+        return expect(f('https://example.test'))
+            .resolves.toMatchObject({ status: 503 })
+            .then((): void => {
+                expect(mockedFetch.mock.calls.length).toBe(2);
+                expect(callTimes.length).toBe(2);
+                expect(callTimes[1].getSeconds() - callTimes[0].getSeconds()).toBe(2);
+            });
+    }, 10000);
 });
