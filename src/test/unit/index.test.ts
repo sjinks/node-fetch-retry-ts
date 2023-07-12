@@ -154,9 +154,12 @@ describe('fetch retry', (): void => {
         mockedFetch.mockImplementation(() => {
             callTimes.push(new Date());
             return new Promise((resolve) => {
-                setTimeout(() => {
-                    resolve(new Response('503', { status: 503 }));
-                }, timeout * 1000 + 500);
+                setTimeout(
+                    () => {
+                        resolve(new Response('503', { status: 503 }));
+                    },
+                    timeout * 1000 + 500,
+                );
             });
         });
 

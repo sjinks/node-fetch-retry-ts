@@ -68,9 +68,12 @@ export default function <F extends (...args: any) => Promise<any> = typeof fetch
 
                 if (typeof frp?.retryTimeout === 'number') {
                     const ac = new AbortController();
-                    setTimeout(() => {
-                        ac.abort();
-                    }, frp?.retryTimeout);
+                    setTimeout(
+                        () => {
+                            ac.abort();
+                        },
+                        frp?.retryTimeout,
+                    );
                     _init.signal = ac.signal;
                 }
 
