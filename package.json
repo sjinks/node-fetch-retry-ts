@@ -29,8 +29,7 @@
   "homepage": "https://github.com/sjinks/node-fetch-retry-ts#readme",
   "files": [
     "dist/index.d.ts",
-    "dist/index.js",
-    "dist/index.js.map"
+    "dist/index.js"
   ],
   "typings": "dist/index.d.ts",
   "devDependencies": {
