@@ -3,7 +3,7 @@
         "target": "es6",
         "module": "CommonJS",
         "outDir": "./dist",
-        "sourceMap": true,
+        "sourceMap": false,
         "declaration": true,
         "strict": true,
         "noUnusedLocals": true,
@@ -11,6 +11,6 @@
         "noFallthroughCasesInSwitch": true,
         "esModuleInterop": true
     },
-    "include": ["src/**.ts"],
+    "include": ["src/**.ts", "src/**/**.ts"],
     "compileOnSave": true
 }
