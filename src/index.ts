@@ -66,9 +66,11 @@ export default function <F extends (...args: any) => Promise<any> = typeof fetch
             const extendedFetch = function (attempt: number): void {
                 const _init: Parameters<F>[1] = typeof init === 'undefined' ? {} : init;
 
+                let abortTimeout: NodeJS.Timeout;
+
                 if (typeof frp?.retryTimeout === 'number') {
                     const ac = new AbortController();
-                    setTimeout(
+                    abortTimeout = setTimeout(
                         () => {
                             ac.abort();
                         },
@@ -79,16 +81,22 @@ export default function <F extends (...args: any) => Promise<any> = typeof fetch
 
                 fetchFunc(input, _init)
                     .then(function (response: Response): void {
+                        if (abortTimeout !== undefined) {
+                            clearTimeout(abortTimeout);
+                        }
+
                         if (retryOnFn(attempt, frp.retries, null, response)) {
-                            // eslint-disable-next-line @typescript-eslint/no-use-before-define
                             retry(attempt, null, response);
                         } else {
                             resolve(response);
                         }
                     })
                     .catch(function (error: Error): void {
+                        if (abortTimeout !== undefined) {
+                            clearTimeout(abortTimeout);
+                        }
+
                         if (retryOnFn(attempt, frp.retries, error, null)) {
-                            // eslint-disable-next-line @typescript-eslint/no-use-before-define
                             retry(attempt, error, null);
                         } else {
                             reject(error);
