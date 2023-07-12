@@ -78,9 +78,12 @@ export default function <F extends (...args: any) => Promise<any> = typeof fetch
             };
 
             function retry(attempt: number, error: Error | null, response: Response | null): void {
-                setTimeout(function (): void {
-                    extendedFetch(++attempt);
-                }, retryDelayFn(attempt, error, response));
+                setTimeout(
+                    function (): void {
+                        extendedFetch(++attempt);
+                    },
+                    retryDelayFn(attempt, error, response),
+                );
             }
 
             extendedFetch(0);
