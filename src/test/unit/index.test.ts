@@ -1,7 +1,7 @@
-import { Response, type RequestInfo, type RequestInit } from 'node-fetch';
+import { Response } from 'node-fetch';
 import builder from '../../';
 
-const mockedFetch = jest.fn<Promise<Response>, [RequestInfo, RequestInit | undefined]>();
+const mockedFetch = jest.fn();
 
 describe('fetch builder', (): void => {
     it('should return a function', (): void => {
@@ -25,7 +25,6 @@ describe('fetch builder', (): void => {
 describe('fetch retry', (): void => {
     beforeEach((): void => {
         jest.resetAllMocks();
-        jest.useRealTimers();
     });
 
     it('passes input parameter to fetch()', async (): Promise<void> => {
@@ -38,7 +37,7 @@ describe('fetch retry', (): void => {
         return expect(f(expectedParam))
             .resolves.toEqual(expectedResponse)
             .then((): void => {
-                expect(mockedFetch).toBeCalledWith(expectedParam, { signal: expect.any(AbortSignal) });
+                expect(mockedFetch).toBeCalledWith(expectedParam, undefined);
             });
     });
 
@@ -120,8 +119,7 @@ describe('fetch retry', (): void => {
     });
 
     it('should call retry functions', async (): Promise<void> => {
-        jest.useFakeTimers();
-        const delayFn = jest.fn((): number => 20);
+        const delayFn = jest.fn((): number => 0);
         const retryFn = jest.fn();
 
         retryFn.mockReturnValueOnce(true);
@@ -134,54 +132,12 @@ describe('fetch retry', (): void => {
         mockedFetch.mockResolvedValueOnce(new Response('419', { status: 419 }));
         mockedFetch.mockResolvedValueOnce(new Response('200', { status: 200 }));
 
-        const promise = f('https://example.test', { retries: 3, retryDelay: delayFn, retryOn: retryFn });
-        await jest.runAllTimersAsync();
-        const response = await promise;
-
-        expect(response).toMatchObject({ status: 504 });
-        expect(mockedFetch.mock.calls.length).toBe(2);
-        expect(retryFn.mock.calls.length).toBe(2);
-        expect(delayFn.mock.calls.length).toBe(2 - 1);
-    });
-
-    it('should timeout before the server answers when timeout value is configured', async (): Promise<void> => {
-        jest.useFakeTimers();
-        const retryFn = jest.fn();
-        const timeout = 2;
-        const callTimes: Date[] = [];
-
-        const f = builder(mockedFetch, { retries: 1, retryDelay: 0, retryOn: retryFn, retryTimeout: timeout * 1000 });
-
-        retryFn.mockReturnValueOnce(true);
-        retryFn.mockReturnValueOnce(false);
-
-        mockedFetch.mockImplementation((url, init) => {
-            callTimes.push(new Date());
-            return new Promise((resolve, reject) => {
-                const timer = setTimeout(
-                    () => {
-                        console.log('resolving');
-                        resolve(new Response('503', { status: 503 }));
-                    },
-                    timeout * 1000 + 500,
-                );
-
-                init?.signal?.addEventListener('abort', () => {
-                    clearTimeout(timer);
-                    reject(new Error('abort'));
-                });
+        return expect(f('https://example.test', { retries: 3, retryDelay: delayFn, retryOn: retryFn }))
+            .resolves.toMatchObject({ status: 504 })
+            .then((): void => {
+                expect(mockedFetch.mock.calls.length).toBe(2);
+                expect(retryFn.mock.calls.length).toBe(2);
+                expect(delayFn.mock.calls.length).toBe(2 - 1);
             });
-        });
-
-        const promise = f('https://example.test');
-        await jest.advanceTimersToNextTimerAsync(); // will abort the request here and retry
-
-        const [result] = await Promise.allSettled([promise, jest.advanceTimersToNextTimerAsync()]); // will abort the request for the second time here and will not retry
-
-        expect(result.status).toBe('rejected');
-        expect((result as PromiseRejectedResult).reason).toMatchObject({ message: 'abort' });
-        expect(mockedFetch.mock.calls.length).toBe(2);
-        expect(callTimes.length).toBe(2);
-        expect(callTimes[1].getSeconds() - callTimes[0].getSeconds()).toBe(2);
     });
 });
