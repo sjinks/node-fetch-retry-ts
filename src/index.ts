@@ -10,7 +10,6 @@ export interface FetchRetryParams {
     retries?: number;
     retryDelay?: number | RequestDelayFunction;
     retryOn?: number[] | RetryRequestFunction;
-    retryTimeout?: number;
 }
 
 function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>): Required<FetchRetryParams> {
@@ -27,10 +26,6 @@ function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>
         result.retryOn = defaults.retryOn;
     }
 
-    if (typeof result.retryTimeout === 'undefined') {
-        result.retryTimeout = defaults.retryTimeout;
-    }
-
     return result;
 }
 
@@ -39,7 +34,7 @@ export default function <F extends (...args: any) => Promise<any> = typeof fetch
     fetchFunc: F,
     params: FetchRetryParams = {},
 ): (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams) => ReturnType<F> {
-    const defaults = sanitize(params, { retries: 3, retryDelay: 500, retryOn: [419, 503, 504], retryTimeout: 300000 });
+    const defaults = sanitize(params, { retries: 3, retryDelay: 500, retryOn: [419, 503, 504] });
 
     return function (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams): ReturnType<F> {
         const frp = sanitize(
@@ -47,7 +42,6 @@ export default function <F extends (...args: any) => Promise<any> = typeof fetch
                 retries: init?.retries,
                 retryDelay: init?.retryDelay,
                 retryOn: init?.retryOn,
-                retryTimeout: init?.retryTimeout,
             },
             defaults,
         );
@@ -64,39 +58,18 @@ export default function <F extends (...args: any) => Promise<any> = typeof fetch
 
         return new Promise(function (resolve, reject): void {
             const extendedFetch = function (attempt: number): void {
-                const _init: Parameters<F>[1] = typeof init === 'undefined' ? {} : init;
-
-                let abortTimeout: NodeJS.Timeout;
-
-                if (typeof frp?.retryTimeout === 'number') {
-                    const ac = new AbortController();
-                    abortTimeout = setTimeout(
-                        () => {
-                            ac.abort();
-                        },
-                        frp?.retryTimeout,
-                    );
-                    _init.signal = ac.signal;
-                }
-
-                fetchFunc(input, _init)
+                fetchFunc(input, init)
                     .then(function (response: Response): void {
-                        if (abortTimeout !== undefined) {
-                            clearTimeout(abortTimeout);
-                        }
-
                         if (retryOnFn(attempt, frp.retries, null, response)) {
+                            // eslint-disable-next-line @typescript-eslint/no-use-before-define
                             retry(attempt, null, response);
                         } else {
                             resolve(response);
                         }
                     })
                     .catch(function (error: Error): void {
-                        if (abortTimeout !== undefined) {
-                            clearTimeout(abortTimeout);
-                        }
-
                         if (retryOnFn(attempt, frp.retries, error, null)) {
+                            // eslint-disable-next-line @typescript-eslint/no-use-before-define
                             retry(attempt, error, null);
                         } else {
                             reject(error);
