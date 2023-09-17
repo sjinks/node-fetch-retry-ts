@@ -30,7 +30,7 @@ function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function <F extends (...args: any) => Promise<any> = typeof fetch>(
+export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof fetch>(
     fetchFunc: F,
     params: FetchRetryParams = {},
 ): (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams) => ReturnType<F> {
@@ -90,3 +90,5 @@ export default function <F extends (...args: any) => Promise<any> = typeof fetch
         }) as ReturnType<F>;
     };
 }
+
+export default fetchBuilder;
