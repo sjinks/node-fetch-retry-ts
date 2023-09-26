@@ -33,7 +33,7 @@
   ],
   "typings": "dist/index.d.ts",
   "devDependencies": {
-    "@types/isomorphic-fetch": "0.0.36",
+    "@types/isomorphic-fetch": "0.0.37",
     "@types/jest": "^29.0.0",
     "@types/node-fetch": "^2.5.8",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
