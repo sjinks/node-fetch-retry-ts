@@ -16,8 +16,14 @@ export interface RequestResponse extends Response {
     retryCount: number;
 }
 
-export interface RequestError extends Error {
+export class RequestError extends Error {
     retryCount: number;
+
+    constructor(message: string, retryCount: number) {
+        super(message);
+        this.name = 'RequestError';
+        this.retryCount = retryCount;
+    }
 }
 
 function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>): Required<FetchRetryParams> {
@@ -82,9 +88,7 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
                             // eslint-disable-next-line @typescript-eslint/no-use-before-define
                             retry(attempt, error, null);
                         } else {
-                            const errorWithRetryCount = error as RequestError;
-                            errorWithRetryCount.retryCount = attempt;
-                            reject(errorWithRetryCount);
+                            reject(new RequestError(error.message, attempt));
                         }
                     });
             };

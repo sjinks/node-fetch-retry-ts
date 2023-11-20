@@ -1,5 +1,5 @@
 import { Response } from 'node-fetch';
-import builder from '../../';
+import builder, { RequestError } from '../../';
 
 const mockedFetch = jest.fn();
 
@@ -61,11 +61,17 @@ describe('fetch retry', (): void => {
         const retries = 3;
         const f = builder(mockedFetch, { retries, retryDelay: 0 });
 
-        return expect(f('https://example.test'))
-            .rejects.toMatchObject({ message: expectedResponse, retryCount: 3 })
-            .then((): void => {
-                expect(mockedFetch.mock.calls.length).toBe(retries + 1);
-            });
+        let catchError;
+        try {
+            await f('https://example.test');
+        } catch (error) {
+            catchError = error;
+        }
+
+        expect(catchError).toMatchObject({ message: expectedResponse, retryCount: 3 });
+        expect(catchError).toBeInstanceOf(Error);
+        expect(catchError).toBeInstanceOf(RequestError);
+        expect(mockedFetch.mock.calls.length).toBe(retries + 1);
     });
 
     it('will return the last response if all attempts fail', async (): Promise<void> => {
