@@ -14,10 +14,11 @@ describe('fetch builder', (): void => {
         mockedFetch.mockResolvedValueOnce(new Response('503', { status: 503 }));
         mockedFetch.mockResolvedValueOnce(new Response('504', { status: 504 }));
 
-        const response = await f('https://example.test');
-
-        expect(response).toMatchObject({ status: 503, retryCount: 0 });
-        expect(mockedFetch.mock.calls.length).toBe(1);
+        return expect(f('https://example.test'))
+            .resolves.toMatchObject({ status: 503, retryCount: 0 })
+            .then((): void => {
+                expect(mockedFetch.mock.calls.length).toBe(1);
+            });
     });
 });
 
