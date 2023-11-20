@@ -12,6 +12,14 @@ export interface FetchRetryParams {
     retryOn?: number[] | RetryRequestFunction;
 }
 
+export interface RequestResponse extends Response {
+    retryCount: number;
+}
+
+export interface RequestError extends Error {
+    retryCount: number;
+}
+
 function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>): Required<FetchRetryParams> {
     const result = { ...defaults, ...params };
     if (typeof result.retries === 'undefined') {
@@ -64,7 +72,9 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
                             // eslint-disable-next-line @typescript-eslint/no-use-before-define
                             retry(attempt, null, response);
                         } else {
-                            resolve(response);
+                            const responseWithRetryCount = response as RequestResponse;
+                            responseWithRetryCount.retryCount = attempt;
+                            resolve(responseWithRetryCount);
                         }
                     })
                     .catch(function (error: Error): void {
@@ -72,7 +82,9 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
                             // eslint-disable-next-line @typescript-eslint/no-use-before-define
                             retry(attempt, error, null);
                         } else {
-                            reject(error);
+                            const errorWithRetryCount = error as RequestError;
+                            errorWithRetryCount.retryCount = attempt;
+                            reject(errorWithRetryCount);
                         }
                     });
             };
