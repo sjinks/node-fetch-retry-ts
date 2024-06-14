@@ -1,5 +1,5 @@
 import { Response } from 'node-fetch';
-import builder from '../../';
+import builder, { RequestError } from '../../';
 
 const mockedFetch = jest.fn();
 
@@ -15,7 +15,7 @@ describe('fetch builder', (): void => {
         mockedFetch.mockResolvedValueOnce(new Response('504', { status: 504 }));
 
         return expect(f('https://example.test'))
-            .resolves.toMatchObject({ status: 503 })
+            .resolves.toMatchObject({ status: 503, retryCount: 0 })
             .then((): void => {
                 expect(mockedFetch.mock.calls.length).toBe(1);
             });
@@ -37,7 +37,7 @@ describe('fetch retry', (): void => {
         return expect(f(expectedParam))
             .resolves.toEqual(expectedResponse)
             .then((): void => {
-                expect(mockedFetch).toBeCalledWith(expectedParam, undefined);
+                expect(mockedFetch).toHaveBeenCalledWith(expectedParam, undefined);
             });
     });
 
@@ -61,11 +61,17 @@ describe('fetch retry', (): void => {
         const retries = 3;
         const f = builder(mockedFetch, { retries, retryDelay: 0 });
 
-        return expect(f('https://example.test'))
-            .rejects.toMatchObject({ message: expectedResponse })
-            .then((): void => {
-                expect(mockedFetch.mock.calls.length).toBe(retries + 1);
-            });
+        let catchError;
+        try {
+            await f('https://example.test');
+        } catch (error) {
+            catchError = error;
+        }
+
+        expect(catchError).toMatchObject({ message: expectedResponse, retryCount: 3 });
+        expect(catchError).toBeInstanceOf(Error);
+        expect(catchError).toBeInstanceOf(RequestError);
+        expect(mockedFetch.mock.calls.length).toBe(retries + 1);
     });
 
     it('will return the last response if all attempts fail', async (): Promise<void> => {
@@ -77,7 +83,7 @@ describe('fetch retry', (): void => {
         const f = builder(mockedFetch, { retries, retryDelay: 0 });
 
         return expect(f('https://example.test'))
-            .resolves.toMatchObject({ status: 419 })
+            .resolves.toMatchObject({ status: 419, retryCount: 2 })
             .then((): void => {
                 expect(mockedFetch.mock.calls.length).toBe(retries + 1);
             });
@@ -94,7 +100,7 @@ describe('fetch retry', (): void => {
         const f = builder(mockedFetch, { retries, retryDelay: 0 });
 
         return expect(f('https://example.test'))
-            .resolves.toMatchObject({ status: 200 })
+            .resolves.toMatchObject({ status: 200, retryCount: 3 })
             .then((): void => {
                 expect(mockedFetch.mock.calls.length).toBe(4);
             });
@@ -110,7 +116,7 @@ describe('fetch retry', (): void => {
         mockedFetch.mockResolvedValueOnce(new Response('504', { status: 504 }));
         mockedFetch.mockResolvedValueOnce(new Response('419', { status: 419 }));
         return expect(f('https://example.test', { retries: 2, retryDelay: 0, retryOn: [419, 503, 504] }))
-            .resolves.toMatchObject({ status: 419 })
+            .resolves.toMatchObject({ status: 419, retryCount: 2 })
             .then((): void => {
                 expect(mockedFetch.mock.calls.length).toBe(3);
                 expect(delayFn.mock.calls.length).toBe(0);
@@ -133,7 +139,7 @@ describe('fetch retry', (): void => {
         mockedFetch.mockResolvedValueOnce(new Response('200', { status: 200 }));
 
         return expect(f('https://example.test', { retries: 3, retryDelay: delayFn, retryOn: retryFn }))
-            .resolves.toMatchObject({ status: 504 })
+            .resolves.toMatchObject({ status: 504, retryCount: 1 })
             .then((): void => {
                 expect(mockedFetch.mock.calls.length).toBe(2);
                 expect(retryFn.mock.calls.length).toBe(2);
