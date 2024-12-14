@@ -12,6 +12,20 @@ export interface FetchRetryParams {
     retryOn?: number[] | RetryRequestFunction;
 }
 
+export interface RequestResponse extends Response {
+    retryCount: number;
+}
+
+export class RequestError extends Error {
+    retryCount: number;
+
+    constructor(message: string, retryCount: number) {
+        super(message);
+        this.name = 'RequestError';
+        this.retryCount = retryCount;
+    }
+}
+
 function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>): Required<FetchRetryParams> {
     const result = { ...defaults, ...params };
     if (typeof result.retries === 'undefined') {
@@ -33,10 +47,10 @@ function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>
 export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof fetch>(
     fetchFunc: F,
     params: FetchRetryParams = {},
-): (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams) => ReturnType<F> {
+): (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams) => Promise<RequestResponse> {
     const defaults = sanitize(params, { retries: 3, retryDelay: 500, retryOn: [419, 503, 504] });
 
-    return function (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams): ReturnType<F> {
+    return function (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams): Promise<RequestResponse> {
         const frp = sanitize(
             {
                 retries: init?.retries,
@@ -64,7 +78,9 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
                             // eslint-disable-next-line @typescript-eslint/no-use-before-define
                             retry(attempt, null, response);
                         } else {
-                            resolve(response);
+                            const responseWithRetryCount = response as RequestResponse;
+                            responseWithRetryCount.retryCount = attempt;
+                            resolve(responseWithRetryCount);
                         }
                     })
                     .catch(function (error: Error): void {
@@ -72,7 +88,7 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
                             // eslint-disable-next-line @typescript-eslint/no-use-before-define
                             retry(attempt, error, null);
                         } else {
-                            reject(error);
+                            reject(new RequestError(error.message, attempt));
                         }
                     });
             };
@@ -87,7 +103,7 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
             }
 
             extendedFetch(0);
-        }) as ReturnType<F>;
+        });
     };
 }
 
