@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/no-nested-functions */
 export type RequestDelayFunction = (attempt: number, error: Error | null, response: Response | null) => number;
 export type RetryRequestFunction = (
     attempt: number,
@@ -39,10 +40,13 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
     return function (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams): ReturnType<F> {
         const frp = sanitize(
             {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 retries: init?.retries,
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 retryDelay: init?.retryDelay,
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 retryOn: init?.retryOn,
-            },
+            } satisfies FetchRetryParams,
             defaults,
         );
 
@@ -53,7 +57,7 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
             typeof frp.retryOn === 'function'
                 ? frp.retryOn
                 : (attempt: number, retries: number, error: Error | null, response: Response | null): boolean =>
-                      (!!error || !response || (frp.retryOn as number[]).indexOf(response.status) !== -1) &&
+                      (!!error || !response || (frp.retryOn as number[]).includes(response.status)) &&
                       attempt < retries;
 
         return new Promise(function (resolve, reject): void {
@@ -67,12 +71,13 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
                             resolve(response);
                         }
                     })
-                    .catch(function (error: Error): void {
-                        if (retryOnFn(attempt, frp.retries, error, null)) {
+                    .catch(function (error: unknown): void {
+                        const err = error instanceof Error ? error : new Error(String(error));
+                        if (retryOnFn(attempt, frp.retries, err, null)) {
                             // eslint-disable-next-line @typescript-eslint/no-use-before-define
-                            retry(attempt, error, null);
+                            retry(attempt, err, null);
                         } else {
-                            reject(error);
+                            reject(err);
                         }
                     });
             };

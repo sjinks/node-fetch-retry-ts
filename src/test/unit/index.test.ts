@@ -37,7 +37,7 @@ describe('fetch retry', (): void => {
         return expect(f(expectedParam))
             .resolves.toEqual(expectedResponse)
             .then((): void => {
-                expect(mockedFetch).toBeCalledWith(expectedParam, undefined);
+                expect(mockedFetch).toHaveBeenCalledWith(expectedParam, undefined);
             });
     });
 
