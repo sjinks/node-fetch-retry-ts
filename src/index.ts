@@ -34,6 +34,52 @@ function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>
     return result;
 }
 
+function getSignal(input: unknown, init: unknown): AbortSignal | null | undefined {
+    const initSignal = (init as { signal?: AbortSignal | null } | undefined)?.signal;
+    if (initSignal !== undefined) {
+        return initSignal;
+    }
+
+    return typeof input === 'object' && input !== null && 'signal' in input
+        ? (input as { signal?: AbortSignal | null }).signal
+        : undefined;
+}
+
+function abortReason(signal: AbortSignal): unknown {
+    if (signal.reason !== undefined) {
+        return signal.reason;
+    }
+
+    const error = new Error('The operation was aborted');
+    error.name = 'AbortError';
+    return error;
+}
+
+async function abortable<T>(promise: Promise<T>, signal: AbortSignal | null | undefined): Promise<T> {
+    if (!signal) {
+        return promise;
+    }
+
+    if (signal.aborted) {
+        // Observe a promise that may already have rejected.
+        void promise.catch((): undefined => undefined);
+        throw abortReason(signal);
+    }
+
+    let onAbort!: () => void;
+    const aborted = new Promise<never>((_resolve, reject): void => {
+        // AbortSignal reasons can be any JavaScript value.
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        onAbort = (): void => reject(abortReason(signal));
+        signal.addEventListener('abort', onAbort, { once: true });
+    });
+    try {
+        return await Promise.race([promise, aborted]);
+    } finally {
+        signal.removeEventListener('abort', onAbort);
+    }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof fetch>(
     fetchFunc: F,
@@ -72,18 +118,30 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
                       (!!error || !response || (frp.retryOn as number[]).includes(response.status)) &&
                       attempt < retries;
 
+        const signal = getSignal(input, init);
+
         for (let attempt = 0; ; ++attempt) {
+            if (signal?.aborted) {
+                throw abortReason(signal);
+            }
             let response: Awaited<ReturnType<F>> | null = null;
             let error: Error | null = null;
             try {
                 // Each attempt must finish before deciding whether to retry.
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, no-await-in-loop
-                response = await fetchFunc(input, init);
+                response = await abortable(fetchFunc(input, init), signal);
             } catch (cause: unknown) {
+                if (signal?.aborted) {
+                    throw abortReason(signal);
+                }
                 error = cause instanceof Error ? cause : new Error(String(cause));
             }
 
-            if (!retryOnFn(attempt, frp.retries, error, response)) {
+            const shouldRetry = retryOnFn(attempt, frp.retries, error, response);
+            if (signal?.aborted) {
+                throw abortReason(signal);
+            }
+            if (!shouldRetry) {
                 if (error) {
                     Object.assign(error, { retryCount: attempt });
                     throw error;
@@ -93,10 +151,19 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
             }
 
             // Wait for the configured delay before starting the next attempt.
-            // eslint-disable-next-line no-await-in-loop
-            await new Promise<void>((resolve): void => {
-                setTimeout(resolve, retryDelayFn(attempt, error, response));
-            });
+            const delay = retryDelayFn(attempt, error, response);
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            try {
+                // eslint-disable-next-line no-await-in-loop
+                await abortable(
+                    new Promise<void>((resolve): void => {
+                        timer = setTimeout(resolve, delay);
+                    }),
+                    signal,
+                );
+            } finally {
+                clearTimeout(timer);
+            }
         }
     };
 }

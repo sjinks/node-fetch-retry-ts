@@ -48,6 +48,8 @@ The final response has a `retryCount` property: `0` means the initial request su
 
 The property is added directly to the final response or error, so these objects must be extensible and their `retryCount` property, if present, must be writable. Errors thrown by retry callbacks are propagated separately and do not have a retry count added.
 
+An `AbortSignal` supplied in `init` or on a Request stops the request and any pending retry delay, even with a custom `retryOn` function. An `init.signal` overrides the Request's signal. Cancellation rejects with the signal's reason (or an `AbortError` if the signal has no reason); the reason is passed through unchanged and is not given a `retryCount`. The underlying fetch implementation must support the signal to stop its own network activity.
+
 ```typescript
 import type { RetryCount } from 'fetch-retry-ts';
 
