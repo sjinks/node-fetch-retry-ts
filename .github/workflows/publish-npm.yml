@@ -28,7 +28,7 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: lts/*
-          cache: npm
+          package-manager-cache: false
 
       - name: Run clean install
         run: npm ci
@@ -45,35 +45,25 @@ jobs:
 
   publish:
     permissions:
-      contents: none
+      contents: read
       id-token: write
     name: Publish package
     runs-on: ubuntu-latest
     needs: prepare
-    strategy:
-      matrix:
-        registry:
-          - npm
-        include:
-          - registry: npm
-            secret: NPM_TOKEN
-            registry_url: https://registry.npmjs.org/
     steps:
       - name: Set up Node.js environment
-        if: github.event_name == 'release' || github.event.inputs[matrix.registry] == 'yes'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: lts/*
-          registry-url: ${{ matrix.registry_url }}
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install npm with trusted publishing support
+        run: npm install --global npm@11 --registry=https://registry.npmjs.org/
 
       - name: Download tarball
-        if: github.event_name == 'release' || github.event.inputs[matrix.registry] == 'yes'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: package
 
       - name: Publish package
-        if: github.event_name == 'release' || github.event.inputs[matrix.registry] == 'yes'
-        run: npm publish *.tgz
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets[matrix.secret] }}
+        run: npm publish ./*.tgz --registry=https://registry.npmjs.org/
