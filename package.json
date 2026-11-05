@@ -49,6 +49,6 @@
     "provenance": true
   },
   "dependencies": {
-    "@myrotvorets/eslint-config-myrotvorets-ts": "^3.0.1"
+    "@myrotvorets/eslint-config-myrotvorets-ts": "^4.0.0"
   }
 }
