@@ -1,4 +1,3 @@
-// eslint-disable-next-line import/no-unresolved
 import isofetch from 'isomorphic-fetch';
 import nfetch from 'node-fetch';
 import cfetch from 'cross-fetch';

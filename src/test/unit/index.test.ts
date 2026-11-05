@@ -17,7 +17,7 @@ describe('fetch builder', (): void => {
         return expect(f('https://example.test'))
             .resolves.toMatchObject({ status: 503 })
             .then((): void => {
-                expect(mockedFetch.mock.calls.length).toBe(1);
+                expect(mockedFetch.mock.calls).toHaveLength(1);
             });
     });
 });
@@ -50,7 +50,7 @@ describe('fetch retry', (): void => {
         return expect(f('https://example.test'))
             .resolves.toEqual(expectedResponse)
             .then((): void => {
-                expect(mockedFetch.mock.calls.length).toBe(1);
+                expect(mockedFetch.mock.calls).toHaveLength(1);
             });
     });
 
@@ -64,7 +64,7 @@ describe('fetch retry', (): void => {
         return expect(f('https://example.test'))
             .rejects.toMatchObject({ message: expectedResponse })
             .then((): void => {
-                expect(mockedFetch.mock.calls.length).toBe(retries + 1);
+                expect(mockedFetch.mock.calls).toHaveLength(retries + 1);
             });
     });
 
@@ -79,7 +79,7 @@ describe('fetch retry', (): void => {
         return expect(f('https://example.test'))
             .resolves.toMatchObject({ status: 419 })
             .then((): void => {
-                expect(mockedFetch.mock.calls.length).toBe(retries + 1);
+                expect(mockedFetch.mock.calls).toHaveLength(retries + 1);
             });
     });
 
@@ -96,7 +96,7 @@ describe('fetch retry', (): void => {
         return expect(f('https://example.test'))
             .resolves.toMatchObject({ status: 200 })
             .then((): void => {
-                expect(mockedFetch.mock.calls.length).toBe(4);
+                expect(mockedFetch.mock.calls).toHaveLength(4);
             });
     });
 
@@ -112,9 +112,9 @@ describe('fetch retry', (): void => {
         return expect(f('https://example.test', { retries: 2, retryDelay: 0, retryOn: [419, 503, 504] }))
             .resolves.toMatchObject({ status: 419 })
             .then((): void => {
-                expect(mockedFetch.mock.calls.length).toBe(3);
-                expect(delayFn.mock.calls.length).toBe(0);
-                expect(retryFn.mock.calls.length).toBe(0);
+                expect(mockedFetch.mock.calls).toHaveLength(3);
+                expect(delayFn.mock.calls).toHaveLength(0);
+                expect(retryFn.mock.calls).toHaveLength(0);
             });
     });
 
@@ -135,9 +135,9 @@ describe('fetch retry', (): void => {
         return expect(f('https://example.test', { retries: 3, retryDelay: delayFn, retryOn: retryFn }))
             .resolves.toMatchObject({ status: 504 })
             .then((): void => {
-                expect(mockedFetch.mock.calls.length).toBe(2);
-                expect(retryFn.mock.calls.length).toBe(2);
-                expect(delayFn.mock.calls.length).toBe(2 - 1);
+                expect(mockedFetch.mock.calls).toHaveLength(2);
+                expect(retryFn.mock.calls).toHaveLength(2);
+                expect(delayFn.mock.calls).toHaveLength(2 - 1);
             });
     });
 });
