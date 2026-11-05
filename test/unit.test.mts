@@ -43,6 +43,15 @@ describe('fetch builder and retry', () => {
         equal(fetch.mock.callCount(), 1);
     });
 
+    it('retains the custom fetch response type', async () => {
+        const customFetch = (_input: string): Promise<Response & { custom: string }> =>
+            Promise.resolve(Object.assign(new Response('ok'), { custom: 'value' }));
+        const result = await builder(customFetch)(url);
+        const custom: string = result.custom;
+        const count: number = result.retryCount;
+        deepEqual([custom, count], ['value', 0]);
+    });
+
     it('rejects the original error after all attempts', async () => {
         const error = new TypeError('FAIL');
         const fetch = mockFetch(async () => {
