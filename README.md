@@ -14,6 +14,8 @@ Wrap a fetch implementation to retry failed requests. The package works with nat
 npm install fetch-retry-ts
 ```
 
+The package is distributed as an ES module. Use an ESM import as shown below; CommonJS applications can load it with `await import('fetch-retry-ts')`.
+
 ## Usage
 
 ```typescript
@@ -62,12 +64,12 @@ try {
 
 ## Examples
 
-### Retry on any 5xx Error
+### Retry on Network Failures and 5xx Responses
 
 ```typescript
 fetchWithRetry(url, {
     retryOn: (attempt: number, retries: number, error: Error | null, response: Response | null): boolean => (
-        attempt < retries && (!!error || !response || response.status >= 500)
+        attempt < retries && (!!error || !response || (response.status >= 500 && response.status < 600))
     ),
 }).then(/* ... */)
 ```
@@ -99,3 +101,13 @@ fetchWithRetry(url, {
     ),
 }).then(/* ... */)
 ```
+
+## Development
+
+```bash
+npm ci
+npm test
+npm run build
+```
+
+`npm test` runs ESLint and the TypeScript tests with coverage. `npm run build` type-checks the project and emits the package and tests to `dist`.
