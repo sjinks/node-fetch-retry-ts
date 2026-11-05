@@ -44,6 +44,8 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
 ) => Promise<Awaited<ReturnType<F>> & RetryCount> {
     const defaults = sanitize(params, { retries: 3, retryDelay: 500, retryOn: [419, 503, 504] });
 
+    // The retry loop keeps attempt handling and callback behavior together.
+    // eslint-disable-next-line sonarjs/cognitive-complexity
     return async function (
         input: Parameters<F>[0],
         init?: Parameters<F>[1] & FetchRetryParams,
@@ -74,7 +76,8 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
             let response: Awaited<ReturnType<F>> | null = null;
             let error: Error | null = null;
             try {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                // Each attempt must finish before deciding whether to retry.
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, no-await-in-loop
                 response = await fetchFunc(input, init);
             } catch (cause: unknown) {
                 error = cause instanceof Error ? cause : new Error(String(cause));
@@ -89,6 +92,8 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
                 return Object.assign(response!, { retryCount: attempt });
             }
 
+            // Wait for the configured delay before starting the next attempt.
+            // eslint-disable-next-line no-await-in-loop
             await new Promise<void>((resolve): void => {
                 setTimeout(resolve, retryDelayFn(attempt, error, response));
             });
