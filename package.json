@@ -1,6 +1,6 @@
 {
   "name": "fetch-retry-ts",
-  "version": "1.4.1",
+  "version": "2.0.0",
   "description": "Adds retry functionality to fetch()",
   "exports": "./dist/src/index.mjs",
   "scripts": {
