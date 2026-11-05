@@ -4,6 +4,8 @@
 
 Adds retry functionality to `fetch()`.
 
+Compatible with node-fetch 2.x and 3.x. Pass the fetch function from the installed version to `fetchBuilder`.
+
 ## Installation
 
 ```bash
