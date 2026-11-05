@@ -1,10 +1,12 @@
 # fetch-retry-ts
 
-![Build and Test CI](https://github.com/sjinks/node-fetch-retry-ts/workflows/Build%20and%20Test%20CI/badge.svg)
+[![Build and test](https://github.com/sjinks/node-fetch-retry-ts/actions/workflows/build-test.yml/badge.svg?branch=master)](https://github.com/sjinks/node-fetch-retry-ts/actions/workflows/build-test.yml)
+[![CodeQL](https://github.com/sjinks/node-fetch-retry-ts/actions/workflows/codeql-analysis.yml/badge.svg?branch=master)](https://github.com/sjinks/node-fetch-retry-ts/actions/workflows/codeql-analysis.yml)
+[![npm version](https://img.shields.io/npm/v/fetch-retry-ts)](https://www.npmjs.com/package/fetch-retry-ts)
 
 Adds retry functionality to `fetch()`.
 
-Compatible with node-fetch 2.x and 3.x. Pass the fetch function from the installed version to `fetchBuilder`.
+Wrap a fetch implementation to retry failed requests. The package works with native `fetch` and compatible implementations such as node-fetch 2.x and 3.x.
 
 ## Installation
 
@@ -15,34 +17,29 @@ npm install fetch-retry-ts
 ## Usage
 
 ```typescript
-import originalFetch from 'isomorphic-fetch';
 import fetchBuilder from 'fetch-retry-ts';
 
 const options = {
     retries: 3,
-    retryDelay: 1000,
+    retryDelay: 500,
     retryOn: [419, 503, 504],
 };
 
-const fetch = fetchBuilder(originalFetch, options);
+const fetchWithRetry = fetchBuilder(globalThis.fetch, options);
 
-fetch('https://example.com/').then(/* ... */);
+const response = await fetchWithRetry('https://example.com/');
+console.log(response.status, response.retryCount);
 ```
 
-`fetch-retry-ts` exports a function, which is used to build the new `fetch()`-compatible function supporting the retry logic.
-It accepts two arguments:
-  * `fetch` (required): the original `fetch()` function (from `isomorphic-fetch` etc)
-  * `defaults` (optional): default values for the retry logic:
-    * `retries?: number`: number of attempts to make (3 by default);
-    * `retryDelay?: number | () => number | (attempt: number, error: Error | null, response: Response | null) => number`: delay between attempts (in ms). If specified as a function, the function accepts the following parameters:
-      * `attempt`: the number of the current attempt;
-      * `error`: `Error` object coming from `fetch()` when it rejects on a network failure, or `null`;
-      * `response`: `Response` or `null` if `error !== null`
-    It should return an integer, which is treated as the delay in ms before the enxt attempt is made. The default value for `retryDelay` is `1000`.
-    * `retryOn?: number[] | (attempt: number, retries: number, error: Error | null, response: Response | null) => boolean`: if specified as an array of integers, it is treated as a list of HTTP codes which trigger retry. When specified as a function, that functoin accepts the same parameters as the one described in `retryDelay`, and an additional parameter called `retries`, whcih is the number of configured retries. The function should return a truthy value if the request should be retried. *If `retryOn` is a function, `retries` is ignored.* The default value for `retryOn` in `[429, 503, 504]`.
-It returns a function to be used instead of `fetch()`.
+`fetchBuilder` is available as both a default and a named export. It takes a fetch function and optional retry defaults, and returns a function with the same input and init arguments. Pass the same options in `init` to override the defaults for one request.
 
-The returned function accepts the same arguments as `fetch(input: RequestInfo, init?: RequestInit)`, and three additional properties in `init` object. Those are `retries`, `retryDelay`, and `retryOn`.
+| Option | Default | Behavior |
+| --- | --- | --- |
+| `retries` | `3` | Maximum number of retries after the initial request when `retryOn` is an array. |
+| `retryDelay` | `500` | Delay in milliseconds, or `(attempt, error, response) => number`. |
+| `retryOn` | `[419, 503, 504]` | Status codes to retry, or `(attempt, retries, error, response) => boolean`. |
+
+With an array, network errors and the listed status codes trigger retries up to the configured limit. A custom `retryOn` decides whether to retry and must enforce the limit itself if desired. Callback `attempt` is zero for the initial request and increases by one for each retry; `retries` is the configured limit. `error` is the error from a failed fetch, or `null`; `response` is the response from a successful fetch, or `null`.
 
 The final response has a `retryCount` property: `0` means the initial request succeeded or was returned without a retry; `1` means one retry was made, and so on. If the request ultimately rejects, the final `Error` also has a `retryCount` property. Existing error instances and their types are preserved; non-`Error` rejections are converted to an `Error`.
 
@@ -54,7 +51,7 @@ An `AbortSignal` supplied in `init` or on a Request stops the request and any pe
 import type { RetryCount } from 'fetch-retry-ts';
 
 try {
-    const response = await fetch('https://example.com/');
+    const response = await fetchWithRetry('https://example.com/');
     console.log(response.retryCount);
 } catch (error: unknown) {
     if (error instanceof Error && 'retryCount' in error) {
@@ -68,7 +65,7 @@ try {
 ### Retry on any 5xx Error
 
 ```typescript
-fetch(url, {
+fetchWithRetry(url, {
     retryOn: (attempt: number, retries: number, error: Error | null, response: Response | null): boolean => (
         attempt < retries && (!!error || !response || response.status >= 500)
     ),
@@ -78,7 +75,7 @@ fetch(url, {
 ### Retry only on Network Failures
 
 ```typescript
-fetch(url, {
+fetchWithRetry(url, {
     retryOn: [],
 }).then(/* ... */)
 ```
@@ -86,7 +83,7 @@ fetch(url, {
 ### Do not retry on Network Failures
 
 ```typescript
-fetch(url, {
+fetchWithRetry(url, {
     retryOn: (attempt: number, retries: number, error: Error | null, response: Response | null): boolean => (
         attempt < retries && error === null /* && additional logic to check response code */
     ),
@@ -96,7 +93,7 @@ fetch(url, {
 ### Exponential Backoff
 
 ```typescript
-fetch(url, {
+fetchWithRetry(url, {
     retryDelay: (attempt: number, error: Error | null, response: Response | null): number => (
         Math.pow(2, attempt) * 1000
     ),
