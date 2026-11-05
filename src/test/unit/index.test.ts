@@ -202,3 +202,105 @@ describe('fetch retry', (): void => {
             });
     });
 });
+
+describe('abort signals', (): void => {
+    beforeEach((): void => {
+        jest.resetAllMocks();
+    });
+
+    it('does not start an already aborted request', async (): Promise<void> => {
+        const controller = new AbortController();
+        const reason = new Error('cancelled');
+        controller.abort(reason);
+        const retryOn = jest.fn((): boolean => true);
+
+        await expect(builder(mockedFetch, { retryOn })('url', { signal: controller.signal })).rejects.toBe(reason);
+        expect(mockedFetch).not.toHaveBeenCalled();
+        expect(retryOn).not.toHaveBeenCalled();
+    });
+
+    it('uses an AbortError when an older signal has no reason', async (): Promise<void> => {
+        const signal = { aborted: true } as AbortSignal;
+        await expect(builder(mockedFetch)('url', { signal })).rejects.toMatchObject({ name: 'AbortError' });
+        expect(mockedFetch).not.toHaveBeenCalled();
+    });
+
+    it('aborts an in-flight request even if fetch does not react to the signal', async (): Promise<void> => {
+        const controller = new AbortController();
+        const reason = new Error('cancelled');
+        mockedFetch.mockImplementation((): Promise<never> => new Promise(jest.fn()));
+        const retryOn = jest.fn((): boolean => true);
+        const pending = builder(mockedFetch, { retryOn })('url', { signal: controller.signal });
+        controller.abort(reason);
+
+        await expect(pending).rejects.toBe(reason);
+        expect(mockedFetch).toHaveBeenCalledTimes(1);
+        expect(retryOn).not.toHaveBeenCalled();
+    });
+
+    it('handles an abort triggered synchronously by fetch', async (): Promise<void> => {
+        const controller = new AbortController();
+        mockedFetch.mockImplementation((): Promise<never> => {
+            controller.abort('cancelled');
+            return Promise.reject(new Error('fetch failed'));
+        });
+        await expect(builder(mockedFetch)('url', { signal: controller.signal })).rejects.toBe('cancelled');
+        expect(mockedFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('cancels a retry delay and clears its timer', async (): Promise<void> => {
+        jest.useFakeTimers();
+        try {
+            const controller = new AbortController();
+            mockedFetch.mockResolvedValue(new Response('retry', { status: 503 }));
+            const delay = jest.fn((): number => 10000);
+            const pending = builder(mockedFetch, { retryDelay: delay })('url', { signal: controller.signal });
+            await jest.advanceTimersByTimeAsync(0);
+            expect(delay).toHaveBeenCalledTimes(1);
+            expect(jest.getTimerCount()).toBe(1);
+            controller.abort('cancelled');
+            await expect(pending).rejects.toBe('cancelled');
+            expect(jest.getTimerCount()).toBe(0);
+            expect(mockedFetch).toHaveBeenCalledTimes(1);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('uses the request signal unless an init signal overrides it', async (): Promise<void> => {
+        const controller = new AbortController();
+        controller.abort('request aborted');
+        const request = { signal: controller.signal };
+        mockedFetch.mockResolvedValue(new Response('ok'));
+        const wrapped = builder(mockedFetch);
+
+        await expect(wrapped(request)).rejects.toBe('request aborted');
+        await expect(wrapped(request, { signal: new AbortController().signal })).resolves.toMatchObject({
+            status: 200,
+        });
+        await expect(wrapped(request, { signal: null })).resolves.toMatchObject({ status: 200 });
+        expect(mockedFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('removes the abort listener after a completed request', async (): Promise<void> => {
+        const controller = new AbortController();
+        const addListener = jest.spyOn(controller.signal, 'addEventListener');
+        const removeListener = jest.spyOn(controller.signal, 'removeEventListener');
+        mockedFetch.mockResolvedValue(new Response('ok'));
+
+        await builder(mockedFetch)('url', { signal: controller.signal });
+        expect(addListener).toHaveBeenCalledTimes(1);
+        expect(removeListener).toHaveBeenCalledWith('abort', addListener.mock.calls[0][1]);
+    });
+
+    it('does not retry an abort triggered inside retryOn', async (): Promise<void> => {
+        const controller = new AbortController();
+        mockedFetch.mockResolvedValue(new Response('ok'));
+        const retryOn = (): boolean => {
+            controller.abort('cancelled');
+            return false;
+        };
+        await expect(builder(mockedFetch, { retryOn })('url', { signal: controller.signal })).rejects.toBe('cancelled');
+        expect(mockedFetch).toHaveBeenCalledTimes(1);
+    });
+});
