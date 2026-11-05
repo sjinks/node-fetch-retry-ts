@@ -1,4 +1,3 @@
-/* eslint-disable sonarjs/no-nested-functions */
 export type RequestDelayFunction = (attempt: number, error: Error | null, response: Response | null) => number;
 export type RetryRequestFunction = (
     attempt: number,
@@ -11,6 +10,11 @@ export interface FetchRetryParams {
     retries?: number;
     retryDelay?: number | RequestDelayFunction;
     retryOn?: number[] | RetryRequestFunction;
+}
+
+/** The number of retries performed after the initial request. */
+export interface RetryCount {
+    retryCount: number;
 }
 
 function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>): Required<FetchRetryParams> {
@@ -34,10 +38,16 @@ function sanitize(params: FetchRetryParams, defaults: Required<FetchRetryParams>
 export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof fetch>(
     fetchFunc: F,
     params: FetchRetryParams = {},
-): (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams) => ReturnType<F> {
+): (
+    input: Parameters<F>[0],
+    init?: Parameters<F>[1] & FetchRetryParams,
+) => Promise<Awaited<ReturnType<F>> & RetryCount> {
     const defaults = sanitize(params, { retries: 3, retryDelay: 500, retryOn: [419, 503, 504] });
 
-    return function (input: Parameters<F>[0], init?: Parameters<F>[1] & FetchRetryParams): ReturnType<F> {
+    return async function (
+        input: Parameters<F>[0],
+        init?: Parameters<F>[1] & FetchRetryParams,
+    ): Promise<Awaited<ReturnType<F>> & RetryCount> {
         const frp = sanitize(
             {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -60,39 +70,29 @@ export function fetchBuilder<F extends (...args: any) => Promise<any> = typeof f
                       (!!error || !response || (frp.retryOn as number[]).includes(response.status)) &&
                       attempt < retries;
 
-        return new Promise(function (resolve, reject): void {
-            const extendedFetch = function (attempt: number): void {
-                fetchFunc(input, init)
-                    .then(function (response: Response): void {
-                        if (retryOnFn(attempt, frp.retries, null, response)) {
-                            // eslint-disable-next-line @typescript-eslint/no-use-before-define
-                            retry(attempt, null, response);
-                        } else {
-                            resolve(response);
-                        }
-                    })
-                    .catch(function (error: unknown): void {
-                        const err = error instanceof Error ? error : new Error(String(error));
-                        if (retryOnFn(attempt, frp.retries, err, null)) {
-                            // eslint-disable-next-line @typescript-eslint/no-use-before-define
-                            retry(attempt, err, null);
-                        } else {
-                            reject(err);
-                        }
-                    });
-            };
-
-            function retry(attempt: number, error: Error | null, response: Response | null): void {
-                setTimeout(
-                    function (): void {
-                        extendedFetch(++attempt);
-                    },
-                    retryDelayFn(attempt, error, response),
-                );
+        for (let attempt = 0; ; ++attempt) {
+            let response: Awaited<ReturnType<F>> | null = null;
+            let error: Error | null = null;
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                response = await fetchFunc(input, init);
+            } catch (cause: unknown) {
+                error = cause instanceof Error ? cause : new Error(String(cause));
             }
 
-            extendedFetch(0);
-        }) as ReturnType<F>;
+            if (!retryOnFn(attempt, frp.retries, error, response)) {
+                if (error) {
+                    Object.assign(error, { retryCount: attempt });
+                    throw error;
+                }
+
+                return Object.assign(response!, { retryCount: attempt });
+            }
+
+            await new Promise<void>((resolve): void => {
+                setTimeout(resolve, retryDelayFn(attempt, error, response));
+            });
+        }
     };
 }
 
