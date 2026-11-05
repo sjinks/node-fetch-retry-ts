@@ -36,6 +36,7 @@
     "@types/isomorphic-fetch": "0.0.39",
     "@types/jest": "^30.0.0",
     "@types/node-fetch": "^2.6.7",
+    "@types/node-fetch-v2": "npm:@types/node-fetch@^2.6.13",
     "cross-fetch": "^4.0.0",
     "eslint-formatter-gha": "^2.0.0",
     "jest": "^30.0.0",
