@@ -42,6 +42,23 @@ It returns a function to be used instead of `fetch()`.
 
 The returned function accepts the same arguments as `fetch(input: RequestInfo, init?: RequestInit)`, and three additional properties in `init` object. Those are `retries`, `retryDelay`, and `retryOn`.
 
+The final response has a `retryCount` property: `0` means the initial request succeeded or was returned without a retry; `1` means one retry was made, and so on. If the request ultimately rejects, the final `Error` also has a `retryCount` property. Existing error instances and their types are preserved; non-`Error` rejections are converted to an `Error`.
+
+The property is added directly to the final response or error, so these objects must be extensible and their `retryCount` property, if present, must be writable. Errors thrown by retry callbacks are propagated separately and do not have a retry count added.
+
+```typescript
+import type { RetryCount } from 'fetch-retry-ts';
+
+try {
+    const response = await fetch('https://example.com/');
+    console.log(response.retryCount);
+} catch (error: unknown) {
+    if (error instanceof Error && 'retryCount' in error) {
+        console.log((error as Error & RetryCount).retryCount);
+    }
+}
+```
+
 ## Examples
 
 ### Retry on any 5xx Error
