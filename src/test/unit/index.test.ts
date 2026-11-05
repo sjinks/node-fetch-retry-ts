@@ -1,4 +1,4 @@
-import { Response } from 'node-fetch';
+import { Response } from 'cross-fetch';
 import builder from '../../';
 
 const mockedFetch = jest.fn();

@@ -8,7 +8,7 @@
     "lint": "eslint -f gha .",
     "build": "tsc",
     "pretest": "npm run lint",
-    "test": "jest --verbose --coverage"
+    "test": "jest --verbose --coverage && npm run build && node --test test/node-fetch.test.mjs"
   },
   "repository": {
     "type": "git",
